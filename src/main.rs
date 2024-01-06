@@ -2,11 +2,15 @@ use arrow_flight::flight_service_client::FlightServiceClient;
 use arrow_flight::Ticket;
 use tonic::Request;
 use polars::prelude::*;
+use std::env;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Config
+    let dremio_flight_url = env::var("DREMIO_FLIGHT_URL")?;
+
     // Create a channel to the Dremio server
-    let channel = tonic::transport::Channel::from_static("http://[dremio-server-address]")
+    let channel = tonic::transport::Channel::from_static(&dremio_flight_url)
         .connect()
         .await?;
 
@@ -15,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a ticket with your SQL query
     let ticket = Ticket {
-        ticket: "[Your SQL query here]".into(),
+        ticket: "SELECT 1".into(), // Something meaningless for now.
     };
 
     // Send a get_flight_info request to the server
