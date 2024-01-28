@@ -1,64 +1,35 @@
-use arrow_flight::flight_service_client::FlightServiceClient;
+// use arrow_flight::BasicAuth;
+use arrow_flight::FlightClient;
+use arrow_flight::FlightDescriptor;
 use arrow_flight::Ticket;
-use tonic::Request;
-use polars::prelude::*;
-use std::env;
+use lazy_static::lazy_static;
+use std::env::var;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Config
-    let dremio_flight_url = env::var("DREMIO_FLIGHT_URL")?;
-
-    // Create a channel to the Dremio server
-    let channel = tonic::transport::Channel::from_static(&dremio_flight_url)
+    lazy_static! {
+        static ref DREMIO_URL: String = var("DREMIO_FLIGHT_URL").unwrap();
+    }
+    lazy_static! {
+        static ref DREMIO_USER: String = var("DREMIO_USER").unwrap();
+    }
+    lazy_static! {
+        static ref DREMIO_PASS: String = var("DREMIO_PASS").unwrap();
+    }
+    lazy_static! {
+        static ref DREMIO_AUTH: String = var("DREMIO_AUTH").unwrap();
+    }
+    let channel = tonic::transport::Channel::from_static(&DREMIO_URL)
         .connect()
-        .await?;
+        .await
+        .expect("error connecting");
 
-    // Create a client using the channel
-    let mut client = FlightServiceClient::new(channel);
+    let mut client = FlightClient::new(channel);
 
-    // Create a ticket with your SQL query
-    let ticket = Ticket {
-        ticket: "SELECT 1".into(), // Something meaningless for now.
-    };
-
-    // Send a get_flight_info request to the server
-    let request = Request::new(ticket);
-    let response = client.get_flight_info(request).await?;
-
-    // Get the first endpoint from the response
-    let endpoint = response
-        .into_inner()
-        .flight_descriptor
-        .unwrap()
-        .endpoint
-        .unwrap()[0]
-        .clone();
-
-    // Use the endpoint to create a ticket for the stream
-    let ticket = Ticket {
-        ticket: endpoint.ticket.ticket,
-    };
-
-    // Create a stream from the ticket
-    let request = Request::new(ticket);
-    let mut stream = client.do_get(request).await?.into_inner();
-
-    // Collect the data from the stream into a Polars DataFrame
-    let mut df = None;
-    while let Some(flight_data) = stream.message().await? {
-        let record_batch = flight_data.record_batch()?;
-        let temp_df = DataFrame::try_from(record_batch)?;
-        df = match df {
-            Some(df) => Some(df.vstack(&temp_df)?),
-            None => Some(temp_df),
-        };
-    }
-
-    // Use the DataFrame
-    if let Some(df) = df {
-        println!("{:?}", df);
-    }
-
+    client.add_header(
+        "authorization",
+        format!("Basic {}", DREMIO_AUTH.as_str()).as_str(),
+    )?;
     Ok(())
 }
