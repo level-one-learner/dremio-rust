@@ -7,15 +7,8 @@ use std::env::var;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Config
     lazy_static! {
         static ref DREMIO_URL: String = var("DREMIO_FLIGHT_URL").unwrap();
-    }
-    lazy_static! {
-        static ref DREMIO_USER: String = var("DREMIO_USER").unwrap();
-    }
-    lazy_static! {
-        static ref DREMIO_PASS: String = var("DREMIO_PASS").unwrap();
     }
     lazy_static! {
         static ref DREMIO_AUTH: String = var("DREMIO_AUTH").unwrap();
@@ -31,5 +24,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "authorization",
         format!("Basic {}", DREMIO_AUTH.as_str()).as_str(),
     )?;
+
     Ok(())
 }
