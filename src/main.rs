@@ -1,8 +1,8 @@
-// use arrow_flight::BasicAuth;
+use arrow_flight::ActionType;
 use arrow_flight::FlightClient;
-use arrow_flight::FlightDescriptor;
-use arrow_flight::Ticket;
+use futures::stream::TryStreamExt;
 use lazy_static::lazy_static;
+
 use std::env::var;
 
 #[tokio::main]
@@ -25,5 +25,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         format!("Basic {}", DREMIO_AUTH.as_str()).as_str(),
     )?;
 
+    let actions: Vec<ActionType> = client
+        .list_actions()
+        .await
+        .expect("error listing actions")
+        .try_collect() // use TryStreamExt to collect stream
+        .await
+        .expect("error gathering actions");
+    print!("{:?}", actions);
     Ok(())
 }
